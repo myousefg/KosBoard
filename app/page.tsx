@@ -11,8 +11,7 @@ export default async function HomePage() {
   const kosanList = (data ?? []) as Kosan[];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+    <div className="min-h-screen bg-[#F8F7F4]">
       <header className="bg-[#1e1b4b] text-white">
         <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="mb-1 flex items-center gap-2">

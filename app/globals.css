@@ -4,11 +4,17 @@
 
 @layer base {
   body {
-    @apply text-gray-900;
+    @apply bg-[#F8F7F4] text-gray-900;
   }
 }
 
 @layer utilities {
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;

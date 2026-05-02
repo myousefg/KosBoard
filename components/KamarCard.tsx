@@ -1,6 +1,7 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Maximize2, MapPin } from "lucide-react";
+import { Maximize2, MapPin, Share2 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import type { KamarWithHarga } from "@/types";
 
@@ -12,16 +13,37 @@ export function KamarCard({ kamar, slug }: { kamar: KamarWithHarga; slug: string
   const coverPhoto = kamar.foto_urls?.[0];
   const hargaTerendah = kamar.harga?.sort((a, b) => a.harga - b.harga)[0];
 
+  function handleShare(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/kos/${slug}/kamar/${kamar.id}`;
+    if (navigator.share) {
+      navigator.share({ title: kamar.nama, text: `Cek kamar kos ini: ${kamar.nama}`, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      alert("Link kamar sudah disalin!");
+    }
+  }
+
   return (
     <Link
       href={`/kos/${slug}/kamar/${kamar.id}`}
-      className="group block rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 hover:shadow-md hover:ring-[#1e1b4b] transition-all duration-200 overflow-hidden"
+      className="group relative block rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 hover:shadow-md hover:ring-[#1e1b4b] transition-all duration-200 overflow-hidden"
     >
+      {/* Share button */}
+      <button
+        onClick={handleShare}
+        className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-500 shadow hover:bg-white hover:text-[#1e1b4b] transition-colors"
+        aria-label="Share kamar"
+      >
+        <Share2 className="h-3.5 w-3.5" />
+      </button>
+
       <div className="relative h-44 w-full bg-gray-100">
         {coverPhoto ? (
           <Image src={coverPhoto} alt={kamar.nama} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, 50vw" />
         ) : (
-          <div className="flex h-full items-center justify-center text-gray-300">
+          <div className="flex h-full items-center justify-center text-gray-200">
             <svg className="h-14 w-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 9.75L12 4l9 5.75V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.75z" />
             </svg>
