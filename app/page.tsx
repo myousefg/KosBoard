@@ -1,68 +1,49 @@
+import Link from "next/link";
+import { MapPin, Home, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Navbar } from "@/components/Navbar";
-import { KamarCard } from "@/components/KamarCard";
-import type { KamarWithHarga } from "@/types";
+import type { Kosan } from "@/types";
 
-export const revalidate = 60; // ISR: revalidate every 60s
+export const revalidate = 60;
 
 export default async function HomePage() {
   const supabase = await createClient();
-
-  const { data: kamarList } = await supabase
-    .from("kamar")
-    .select("*, harga(*)")
-    .order("created_at", { ascending: true });
-
-  const rooms = (kamarList ?? []) as KamarWithHarga[];
-  const kosong = rooms.filter((k) => k.status === "kosong").length;
-  const terisi = rooms.filter((k) => k.status === "terisi").length;
+  const { data } = await supabase.from("kosan").select("*").order("created_at");
+  const kosanList = (data ?? []) as Kosan[];
 
   return (
-    <>
-      <Navbar />
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        {/* Hero */}
-        <div className="mb-8 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-900 px-6 py-8 text-white shadow-lg">
-          <h1 className="mb-1 text-2xl font-bold sm:text-3xl">
-            {process.env.NEXT_PUBLIC_KOS_NAME ?? "Info Kamar Kos"}
-          </h1>
-          <p className="mb-4 text-brand-100 text-sm">
-            {process.env.NEXT_PUBLIC_KOS_ADDRESS}
-          </p>
-          <div className="flex gap-4">
-            <div className="rounded-xl bg-white/15 px-4 py-2 text-center">
-              <p className="text-2xl font-bold">{kosong}</p>
-              <p className="text-xs text-brand-100">Kamar Kosong</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-[#1e1b4b] text-white">
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <div className="mb-1 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+              <Home className="h-5 w-5" />
             </div>
-            <div className="rounded-xl bg-white/15 px-4 py-2 text-center">
-              <p className="text-2xl font-bold">{terisi}</p>
-              <p className="text-xs text-brand-100">Kamar Terisi</p>
-            </div>
-            <div className="rounded-xl bg-white/15 px-4 py-2 text-center">
-              <p className="text-2xl font-bold">{rooms.length}</p>
-              <p className="text-xs text-brand-100">Total Kamar</p>
-            </div>
+            <span className="text-xl font-bold">Kos Bu Ida</span>
           </div>
+          <p className="text-sm text-indigo-200">Pilih lokasi kos yang ingin kamu lihat</p>
         </div>
+      </header>
 
-        {/* Filter hint */}
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-700">Semua Kamar</h2>
-          <span className="text-sm text-gray-400">{rooms.length} kamar</span>
+      <main className="mx-auto max-w-3xl px-4 py-6">
+        <div className="space-y-3">
+          {kosanList.map((kosan) => (
+            <Link
+              key={kosan.id}
+              href={`/kos/${kosan.slug}`}
+              className="flex items-center justify-between rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 hover:ring-[#1e1b4b] hover:shadow-md transition-all group"
+            >
+              <div>
+                <p className="font-semibold text-gray-900 group-hover:text-[#1e1b4b]">{kosan.nama}</p>
+                <p className="mt-0.5 flex items-center gap-1 text-sm text-gray-400">
+                  <MapPin className="h-3.5 w-3.5" /> {kosan.alamat}
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-[#1e1b4b] transition-colors" />
+            </Link>
+          ))}
         </div>
-
-        {rooms.length === 0 ? (
-          <div className="py-20 text-center text-gray-400">
-            <p className="text-lg">Belum ada data kamar.</p>
-          </div>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {rooms.map((kamar) => (
-              <KamarCard key={kamar.id} kamar={kamar} />
-            ))}
-          </div>
-        )}
       </main>
-    </>
+    </div>
   );
 }
