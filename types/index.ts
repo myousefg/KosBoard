@@ -29,6 +29,7 @@ export interface Kamar {
   fasilitas: string[] | null;
   foto_urls: string[] | null;
   urutan: number;
+  tanggal_keluar: string | null; // ← kolom baru (format: "YYYY-MM-DD")
   created_at: string;
   updated_at: string;
   harga?: Harga[];

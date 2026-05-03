@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Maximize2, MapPin, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Maximize2, MapPin, CheckCircle2, Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -20,7 +20,16 @@ function formatRupiah(n: number) {
   }).format(n);
 }
 
-// ─── generateMetadata ────────────────────────────────────────────────────────
+function formatTanggal(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// ─── generateMetadata ─────────────────────────────────────────────────────────
 
 export async function generateMetadata({
   params,
@@ -44,19 +53,15 @@ export async function generateMetadata({
 
   const kamar = data as KamarWithHarga | null;
   const k = kosan as Kosan | null;
+  if (!kamar || !k) return { title: "Kamar tidak ditemukan" };
 
-  if (!kamar || !k) {
-    return { title: "Kamar tidak ditemukan" };
-  }
-
-  const hargaSorted = [...(kamar.harga ?? [])].sort(
-    (a, b) => a.harga - b.harga
-  );
-  const hargaMin = hargaSorted[0];
+  const hargaMin = [...(kamar.harga ?? [])].sort((a, b) => a.harga - b.harga)[0];
   const status = kamar.status === "kosong" ? "Tersedia" : "Terisi";
 
   const title = `${kamar.nama} — ${k.nama}`;
   const descParts: string[] = [`Status: ${status}`];
+  if (kamar.tanggal_keluar)
+    descParts.push(`Tersedia mulai ${formatTanggal(kamar.tanggal_keluar)}`);
   if (kamar.luas) descParts.push(`Luas: ${kamar.luas}`);
   if (kamar.lantai) descParts.push(`Lantai ${kamar.lantai}`);
   if (hargaMin)
@@ -65,8 +70,8 @@ export async function generateMetadata({
     );
   if (kamar.fasilitas?.length)
     descParts.push(`Fasilitas: ${kamar.fasilitas.slice(0, 3).join(", ")}`);
-  const description = descParts.join(" · ");
 
+  const description = descParts.join(" · ");
   const pageUrl = `${SITE_URL}/kos/${slug}/kamar/${id}`;
 
   return {
@@ -80,18 +85,12 @@ export async function generateMetadata({
       type: "website",
       locale: "id_ID",
     },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
-    alternates: {
-      canonical: pageUrl,
-    },
+    twitter: { card: "summary_large_image", title, description },
+    alternates: { canonical: pageUrl },
   };
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function KamarDetailPage({
   params,
@@ -122,6 +121,9 @@ export default async function KamarDetailPage({
     (a, b) => a.urutan - b.urutan
   );
 
+  const isKosong = kamar.status === "kosong";
+  const adaTanggal = !isKosong && !!kamar.tanggal_keluar;
+
   return (
     <div className="min-h-screen bg-[#F8F7F4]">
       <header className="bg-[#1e1b4b] px-4 py-3">
@@ -137,10 +139,9 @@ export default async function KamarDetailPage({
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6 space-y-4">
-        {/* Photo Carousel */}
         <PhotoCarousel fotoUrls={kamar.foto_urls ?? []} kamarNama={kamar.nama} />
 
-        {/* Header */}
+        {/* Header kamar */}
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
           <div className="mb-2 flex items-start justify-between gap-3">
             <div>
@@ -162,8 +163,22 @@ export default async function KamarDetailPage({
             </div>
             <StatusBadge status={kamar.status} />
           </div>
+
+          {/* Info tanggal tersedia */}
+          {adaTanggal && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5">
+              <Calendar className="h-4 w-4 flex-shrink-0 text-amber-500" />
+              <p className="text-sm text-amber-800">
+                Tersedia mulai{" "}
+                <span className="font-semibold">
+                  {formatTanggal(kamar.tanggal_keluar!)}
+                </span>
+              </p>
+            </div>
+          )}
+
           {kamar.deskripsi && (
-            <p className="mt-3 leading-relaxed text-gray-600 text-sm">
+            <p className="mt-3 text-sm leading-relaxed text-gray-600">
               {kamar.deskripsi}
             </p>
           )}
@@ -210,8 +225,10 @@ export default async function KamarDetailPage({
         {/* CTA */}
         <div className="rounded-2xl bg-white p-4 shadow-lg ring-1 ring-gray-200">
           <p className="mb-3 text-sm text-gray-500">
-            {kamar.status === "kosong"
+            {isKosong
               ? "Kamar ini tersedia. Hubungi kami untuk reservasi."
+              : adaTanggal
+              ? `Kamar ini terisi sampai ${formatTanggal(kamar.tanggal_keluar!)}. Hubungi kami untuk reservasi lebih awal.`
               : "Kamar ini sedang terisi. Hubungi kami untuk info kamar lain."}
           </p>
           <WhatsAppButton
