@@ -107,7 +107,7 @@ bash scripts/dev.sh
 bash scripts/build.sh
 
 # Bersihkan sebelum zip & share ke teman/dosen
-bash scripts/clean.sh
+npm run clean
 ```
 
 > **Catatan:** `dev.sh` dan `build.sh` hanya diperlukan jika ingin run lokal.  
