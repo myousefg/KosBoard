@@ -2,21 +2,31 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MapPin, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { KamarCard } from "@/components/KamarCard";
+import { KamarFilterClient } from "@/components/KamarFilterClient";
 import type { Kosan, KamarWithHarga } from "@/types";
 
 export const revalidate = 60;
 
-export default async function KosanPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function KosanPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const supabase = await createClient();
 
-  const { data: kosan } = await supabase.from("kosan").select("*").eq("slug", slug).single();
+  const { data: kosan } = await supabase
+    .from("kosan")
+    .select("*")
+    .eq("slug", slug)
+    .single();
   if (!kosan) notFound();
 
   const { data: kamarList } = await supabase
-    .from("kamar").select("*, harga(*)")
-    .eq("kosan_id", kosan.id).order("created_at");
+    .from("kamar")
+    .select("*, harga(*)")
+    .eq("kosan_id", kosan.id)
+    .order("urutan", { ascending: true }); // ← pakai urutan manual
 
   const rooms = (kamarList ?? []) as KamarWithHarga[];
   const k = kosan as Kosan;
@@ -30,7 +40,10 @@ export default async function KosanPage({ params }: { params: Promise<{ slug: st
     <div className="min-h-screen bg-[#F8F7F4]">
       <header className="bg-[#1e1b4b] text-white">
         <div className="mx-auto max-w-3xl px-4 py-6">
-          <Link href="/" className="mb-3 inline-flex items-center gap-1.5 text-sm text-indigo-300 hover:text-white transition-colors">
+          <Link
+            href="/"
+            className="mb-3 inline-flex items-center gap-1.5 text-sm text-indigo-300 hover:text-white transition-colors"
+          >
             <ArrowLeft className="h-4 w-4" /> Semua Lokasi
           </Link>
           <h1 className="text-xl font-bold">{k.nama}</h1>
@@ -41,7 +54,10 @@ export default async function KosanPage({ params }: { params: Promise<{ slug: st
               { label: "Terisi", val: rooms.length - kosong },
               { label: "Total", val: rooms.length },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl bg-white/10 px-4 py-2 text-center">
+              <div
+                key={s.label}
+                className="rounded-xl bg-white/10 px-4 py-2 text-center"
+              >
                 <p className="text-xl font-bold">{s.val}</p>
                 <p className="text-xs text-indigo-200">{s.label}</p>
               </div>
@@ -50,7 +66,7 @@ export default async function KosanPage({ params }: { params: Promise<{ slug: st
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6 space-y-6">
+      <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
         {/* Google Maps */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
           <div className="h-52 w-full">
@@ -65,7 +81,7 @@ export default async function KosanPage({ params }: { params: Promise<{ slug: st
             />
           </div>
           <div className="flex items-center justify-between px-4 py-3">
-            <p className="flex items-center gap-1.5 text-sm text-gray-500 line-clamp-1">
+            <p className="line-clamp-1 flex items-center gap-1.5 text-sm text-gray-500">
               <MapPin className="h-4 w-4 flex-shrink-0 text-[#1e1b4b]" />
               {k.alamat}
             </p>
@@ -73,7 +89,7 @@ export default async function KosanPage({ params }: { params: Promise<{ slug: st
               href={mapsOpenUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-3 inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-[#1e1b4b] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#17144a] transition-colors"
+              className="ml-3 inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-[#1e1b4b] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#17144a]"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Buka Maps
@@ -81,16 +97,9 @@ export default async function KosanPage({ params }: { params: Promise<{ slug: st
           </div>
         </div>
 
-        {/* Filter */}
-        <KamarFilter rooms={rooms} slug={slug} />
+        {/* Daftar kamar */}
+        <KamarFilterClient rooms={rooms} slug={slug} />
       </main>
     </div>
   );
-}
-
-// Client component for filter
-import { KamarFilterClient } from "@/components/KamarFilterClient";
-
-function KamarFilter({ rooms, slug }: { rooms: KamarWithHarga[]; slug: string }) {
-  return <KamarFilterClient rooms={rooms} slug={slug} />;
 }

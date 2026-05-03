@@ -28,6 +28,7 @@ export interface Kamar {
   lantai: number | null;
   fasilitas: string[] | null;
   foto_urls: string[] | null;
+  urutan: number;
   created_at: string;
   updated_at: string;
   harga?: Harga[];
