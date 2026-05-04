@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import StatusBadge from './StatusBadge'
-import RoomPlaceholder from './RoomPlaceholder'
-import ShareButton from './ShareButton'
+import { StatusBadge } from './StatusBadge'
+import { RoomPlaceholder } from './RoomPlaceholder'
+import { ShareButton } from './ShareButton'
 import type { Tables } from '@/types'
 
 type Harga = Tables<'harga'>
@@ -34,7 +34,7 @@ function getHargaTerendah(hargaList: Harga[]): Harga | null {
   return hargaList.reduce((min, h) => (h.harga < min.harga ? h : min))
 }
 
-export default function KamarCard({ kamar, priority = false }: KamarCardProps) {
+export function KamarCard({ kamar, priority = false }: KamarCardProps) {
   const hargaTerendah = getHargaTerendah(kamar.harga)
   const fotoUtama = kamar.foto_urls?.[0] ?? null
 
