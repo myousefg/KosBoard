@@ -163,6 +163,7 @@ function TanggalModal({
 function SortableKamarRow({
   kamar,
   kosanSlug,
+  // ✅ PERUBAHAN 1: toggling sekarang Set<string>, bukan string | null
   toggling,
   onToggleToTerisi,
   onToggleToKosong,
@@ -170,7 +171,7 @@ function SortableKamarRow({
 }: {
   kamar: Kamar;
   kosanSlug: string;
-  toggling: string | null;
+  toggling: Set<string>; // ← dari: string | null
   onToggleToTerisi: (k: Kamar) => void;
   onToggleToKosong: (k: Kamar) => void;
   isDragDisabled: boolean;
@@ -197,6 +198,9 @@ function SortableKamarRow({
       onToggleToKosong(kamar);
     }
   }
+
+  // ✅ PERUBAHAN 2: cek pakai .has() bukan perbandingan string
+  const isToggling = toggling.has(kamar.id); // ← dari: toggling === kamar.id
 
   return (
     <li
@@ -235,11 +239,37 @@ function SortableKamarRow({
       <div className="flex flex-shrink-0 items-center gap-2">
         <button
           onClick={handleToggle}
-          disabled={toggling === kamar.id}
+          // ✅ PERUBAHAN 3: pakai isToggling (dari Set.has), bukan toggling === kamar.id
+          disabled={isToggling}
           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
-          title={`Ubah ke ${kamar.status === "kosong" ? "terisi" : "kosong"}`}
+          title={
+            isToggling
+              ? "Menyimpan..."
+              : `Ubah ke ${kamar.status === "kosong" ? "terisi" : "kosong"}`
+          }
         >
-          {kamar.status === "kosong" ? (
+          {isToggling ? (
+            // Spinner kecil saat loading — UX lebih jelas
+            <svg
+              className="h-5 w-5 animate-spin text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
+              />
+            </svg>
+          ) : kamar.status === "kosong" ? (
             <ToggleRight className="h-5 w-5 text-green-500" />
           ) : (
             <ToggleLeft className="h-5 w-5 text-gray-400" />
@@ -295,7 +325,13 @@ export function AdminDashboardClient({
     kosanList.map((k) => k.id)
   );
   const [filter, setFilter] = useState<Filter>("semua");
-  const [toggling, setToggling] = useState<string | null>(null);
+
+  // ✅ PERUBAHAN 4: toggling sekarang Set<string>
+  // Set bisa simpan BANYAK kamar yang sedang diproses sekaligus.
+  // Dulu: string | null → hanya bisa lindungi 1 kamar.
+  // Sekarang: Set<string> → bisa lindungi semua kamar yang pending secara bersamaan.
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
+
   const [search, setSearch] = useState("");
   const [savingOrder, setSavingOrder] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -318,8 +354,22 @@ export function AdminDashboardClient({
     );
   }
 
+  // ✅ Helper: tambah/hapus ID dari Set toggling
+  function addToggling(id: string) {
+    setToggling((prev) => new Set([...prev, id]));
+  }
+  function removeToggling(id: string) {
+    setToggling((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
   // Toggle ke TERISI → buka modal dulu
   function handleToggleToTerisi(kamar: Kamar) {
+    // Guard: jangan buka modal kalau kamar ini sedang diproses
+    if (toggling.has(kamar.id)) return;
     setPendingTerisi(kamar);
   }
 
@@ -328,43 +378,56 @@ export function AdminDashboardClient({
     if (!pendingTerisi) return;
     const kamar = pendingTerisi;
     setPendingTerisi(null);
-    setToggling(kamar.id);
 
-    const { error } = await supabase
-      .from("kamar")
-      .update({ status: "terisi", tanggal_keluar: tanggalKeluar })
-      .eq("id", kamar.id);
+    // Guard: jangan proses kalau sudah pending (double-submit)
+    if (toggling.has(kamar.id)) return;
+    addToggling(kamar.id);
 
-    if (!error) {
-      setRooms((prev) =>
-        prev.map((r) =>
-          r.id === kamar.id
-            ? { ...r, status: "terisi", tanggal_keluar: tanggalKeluar }
-            : r
-        )
-      );
+    try {
+      const { error } = await supabase
+        .from("kamar")
+        .update({ status: "terisi", tanggal_keluar: tanggalKeluar })
+        .eq("id", kamar.id);
+
+      if (!error) {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === kamar.id
+              ? { ...r, status: "terisi", tanggal_keluar: tanggalKeluar }
+              : r
+          )
+        );
+      }
+    } finally {
+      // Selalu hapus dari pending, baik sukses maupun gagal
+      removeToggling(kamar.id);
     }
-    setToggling(null);
   }
 
   // Toggle ke KOSONG → langsung, hapus tanggal_keluar
   async function handleToggleToKosong(kamar: Kamar) {
-    setToggling(kamar.id);
-    const { error } = await supabase
-      .from("kamar")
-      .update({ status: "kosong", tanggal_keluar: null })
-      .eq("id", kamar.id);
+    // Guard: jangan proses kalau sudah pending
+    if (toggling.has(kamar.id)) return;
+    addToggling(kamar.id);
 
-    if (!error) {
-      setRooms((prev) =>
-        prev.map((r) =>
-          r.id === kamar.id
-            ? { ...r, status: "kosong", tanggal_keluar: null }
-            : r
-        )
-      );
+    try {
+      const { error } = await supabase
+        .from("kamar")
+        .update({ status: "kosong", tanggal_keluar: null })
+        .eq("id", kamar.id);
+
+      if (!error) {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === kamar.id
+              ? { ...r, status: "kosong", tanggal_keluar: null }
+              : r
+          )
+        );
+      }
+    } finally {
+      removeToggling(kamar.id);
     }
-    setToggling(null);
   }
 
   // ── Drag handlers ──────────────────────────────────────────────────────────

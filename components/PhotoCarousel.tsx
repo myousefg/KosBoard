@@ -1,95 +1,117 @@
-"use client";
-import { useState } from "react";
-import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { RoomPlaceholder } from "./RoomPlaceholder";
+'use client'
 
-interface Props {
-  fotoUrls: string[];
-  kamarNama: string;
+import { useState, useCallback } from 'react'
+import Image from 'next/image'
+
+interface PhotoCarouselProps {
+  urls: string[]
+  namaKamar: string
 }
 
-export function PhotoCarousel({ fotoUrls, kamarNama }: Props) {
-  const [current, setCurrent] = useState(0);
+const BLUR_DATA_URL =
+  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iOSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iOSIgZmlsbD0iI2U1ZTdlYiIvPjwvc3ZnPg=='
 
-  // ── Placeholder jika tidak ada foto ─────────────────────────────────────
-  if (fotoUrls.length === 0) {
-    return (
-      <div className="flex h-56 flex-col items-center justify-center gap-3 rounded-2xl bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50 ring-1 ring-gray-200">
-        <RoomPlaceholder size="lg" />
-        <p className="text-xs font-medium tracking-wide text-indigo-300">
-          Belum ada foto
-        </p>
-      </div>
-    );
-  }
+export default function PhotoCarousel({ urls, namaKamar }: PhotoCarouselProps) {
+  const [active, setActive] = useState(0)
 
-  const prev = () =>
-    setCurrent((c) => (c === 0 ? fotoUrls.length - 1 : c - 1));
-  const next = () =>
-    setCurrent((c) => (c === fotoUrls.length - 1 ? 0 : c + 1));
+  const prev = useCallback(() => {
+    setActive((i) => (i === 0 ? urls.length - 1 : i - 1))
+  }, [urls.length])
+
+  const next = useCallback(() => {
+    setActive((i) => (i === urls.length - 1 ? 0 : i + 1))
+  }, [urls.length])
+
+  if (!urls || urls.length === 0) return null
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+    <div className="flex flex-col gap-2">
       {/* Main image */}
-      <div className="relative h-72 w-full bg-gray-100">
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-100">
         <Image
-          src={fotoUrls[current]}
-          alt={`${kamarNama} - foto ${current + 1}`}
+          key={urls[active]}
+          src={urls[active]}
+          alt={`Foto ${namaKamar} ${active + 1} dari ${urls.length}`}
           fill
-          className="object-cover transition-opacity duration-300"
-          priority={current === 0}
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, 800px"
+          priority={active === 0}
+          loading={active === 0 ? 'eager' : 'lazy'}
+          placeholder="blur"
+          blurDataURL={BLUR_DATA_URL}
         />
 
-        {/* Nav arrows */}
-        {fotoUrls.length > 1 && (
+        {urls.length > 1 && (
           <>
             <button
               onClick={prev}
-              className="absolute left-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60"
+              aria-label="Foto sebelumnya"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
             <button
               onClick={next}
-              className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60"
+              aria-label="Foto berikutnya"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
             >
-              <ChevronRight className="h-5 w-5" />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
             </button>
+
+            {/* Dot indicator */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {urls.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActive(i)}
+                  aria-label={`Lihat foto ${i + 1}`}
+                  className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                    i === active ? 'bg-white' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
           </>
         )}
 
         {/* Counter */}
-        {fotoUrls.length > 1 && (
-          <div className="absolute bottom-3 right-3 rounded-full bg-black/50 px-2.5 py-1 text-xs text-white">
-            {current + 1} / {fotoUrls.length}
-          </div>
+        {urls.length > 1 && (
+          <span className="absolute top-2 right-2 text-xs bg-black/40 text-white px-2 py-0.5 rounded-full">
+            {active + 1}/{urls.length}
+          </span>
         )}
       </div>
 
-      {/* Thumbnails */}
-      {fotoUrls.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto p-3">
-          {fotoUrls.map((url, i) => (
+      {/* Thumbnail strip — hanya kalau ≥3 foto */}
+      {urls.length >= 3 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 snap-x">
+          {urls.map((url, i) => (
             <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg transition-all ${
-                i === current
-                  ? "ring-2 ring-[#1e1b4b] ring-offset-1"
-                  : "opacity-60 hover:opacity-100"
+              key={url}
+              onClick={() => setActive(i)}
+              className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden snap-start border-2 transition-colors ${
+                i === active ? 'border-green-600' : 'border-transparent'
               }`}
+              aria-label={`Pilih foto ${i + 1}`}
             >
               <Image
                 src={url}
-                alt={`thumbnail ${i + 1}`}
+                alt={`Thumbnail ${i + 1}`}
                 fill
                 className="object-cover"
+                sizes="64px"
+                loading="lazy"
+                placeholder="blur"
+                blurDataURL={BLUR_DATA_URL}
               />
             </button>
           ))}
         </div>
       )}
     </div>
-  );
+  )
 }
