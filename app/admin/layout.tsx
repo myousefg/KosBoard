@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, LayoutDashboard, LogOut, PlusCircle } from "lucide-react";
+import { Home, LayoutDashboard, LogOut, PlusCircle, ImageIcon } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,6 +19,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-indigo-50 hover:text-[#1e1b4b]"
           >
             <LayoutDashboard className="h-4 w-4" /> Dashboard
+          </Link>
+          <Link
+            href="/admin/kosan"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-indigo-50 hover:text-[#1e1b4b]"
+          >
+            <ImageIcon className="h-4 w-4" /> Foto Kosan
           </Link>
           <Link
             href="/admin/kamar/tambah"
@@ -50,6 +56,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             title="Dashboard"
           >
             <LayoutDashboard className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/admin/kosan"
+            className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
+            title="Foto Kosan"
+          >
+            <ImageIcon className="h-4 w-4" />
           </Link>
           <Link
             href="/admin/kamar/tambah"

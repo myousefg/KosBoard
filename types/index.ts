@@ -6,6 +6,8 @@ export interface Kosan {
   slug: string;
   alamat: string;
   whatsapp: string;
+  foto_cover: string | null;
+  deskripsi: string | null;
   created_at: string;
 }
 
@@ -29,7 +31,7 @@ export interface Kamar {
   fasilitas: string[] | null;
   foto_urls: string[] | null;
   urutan: number;
-  tanggal_keluar: string | null; // ← kolom baru (format: "YYYY-MM-DD")
+  tanggal_keluar: string | null;
   created_at: string;
   updated_at: string;
   harga?: Harga[];
