@@ -4,14 +4,14 @@ import { useState, useCallback } from 'react'
 import Image from 'next/image'
 
 interface PhotoCarouselProps {
-  urls: string[]
-  namaKamar: string
+  fotoUrls: string[]
+  kamarNama: string
 }
 
 const BLUR_DATA_URL =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iOSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iOSIgZmlsbD0iI2U1ZTdlYiIvPjwvc3ZnPg=='
 
-export function PhotoCarousel({ urls, namaKamar }: PhotoCarouselProps) {
+export function PhotoCarousel({ fotoUrls: urls, kamarNama: namaKamar }: PhotoCarouselProps) {
   const [active, setActive] = useState(0)
 
   const prev = useCallback(() => {
