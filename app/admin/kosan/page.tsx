@@ -1,167 +1,27 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, MapPin, ExternalLink } from "lucide-react";
-import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { KamarFilterClient } from "@/components/KamarFilterClient";
-import type { Kosan, KamarWithHarga } from "@/types";
+import { KosanFormClient } from "@/components/KosanFormClient";
+import type { Kosan } from "@/types";
 
-export const revalidate = 60;
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://kosanboard.vercel.app";
-
-// ─── generateMetadata ─────────────────────────────────────────────────────────
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
+export default async function AdminKosanPage() {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("kosan")
     .select("*")
-    .eq("slug", slug)
-    .single();
+    .order("created_at");
 
-  if (!data) return { title: "Lokasi tidak ditemukan" };
-
-  const kosan = data as Kosan;
-  const { data: kamarData } = await supabase
-    .from("kamar")
-    .select("id, status")
-    .eq("kosan_id", kosan.id);
-
-  const total = kamarData?.length ?? 0;
-  const kosong = kamarData?.filter((k) => k.status === "kosong").length ?? 0;
-
-  const title = kosan.nama;
-  const description =
-    kosan.deskripsi ??
-    `${kosong} dari ${total} kamar tersedia di ${kosan.nama}, ${kosan.alamat}.`;
-
-  const pageUrl = `${SITE_URL}/kos/${slug}`;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      url: pageUrl,
-      siteName: "KosBoard — Kos Bu Ida",
-      type: "website",
-      locale: "id_ID",
-      ...(kosan.foto_cover
-        ? { images: [{ url: kosan.foto_cover, width: 1200, height: 630 }] }
-        : {}),
-    },
-    twitter: {
-      card: kosan.foto_cover ? "summary_large_image" : "summary",
-      title,
-      description,
-    },
-    alternates: { canonical: pageUrl },
-  };
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default async function KosanPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const supabase = await createClient();
-
-  const { data: kosan } = await supabase
-    .from("kosan")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-  if (!kosan) notFound();
-
-  const { data: kamarList } = await supabase
-    .from("kamar")
-    .select("*, harga(*)")
-    .eq("kosan_id", kosan.id)
-    .order("urutan", { ascending: true });
-
-  const rooms = (kamarList ?? []) as KamarWithHarga[];
-  const k = kosan as Kosan;
-  const kosong = rooms.filter((r) => r.status === "kosong").length;
-
-  const mapsQuery = encodeURIComponent(k.alamat);
-  const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&output=embed&z=17`;
-  const mapsOpenUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+  const kosanList = (data ?? []) as Kosan[];
 
   return (
-    <div className="min-h-screen bg-[#F8F7F4]">
-      <header className="bg-[#1e1b4b] text-white">
-        <div className="mx-auto max-w-3xl px-4 py-6">
-          <Link
-            href="/"
-            className="mb-3 inline-flex items-center gap-1.5 text-sm text-indigo-300 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" /> Semua Lokasi
-          </Link>
-          <h1 className="text-xl font-bold">{k.nama}</h1>
-          <p className="text-sm text-indigo-200">{k.alamat}</p>
-          <div className="mt-4 flex gap-3">
-            {[
-              { label: "Kamar Kosong", val: kosong },
-              { label: "Terisi", val: rooms.length - kosong },
-              { label: "Total", val: rooms.length },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl bg-white/10 px-4 py-2 text-center"
-              >
-                <p className="text-xl font-bold">{s.val}</p>
-                <p className="text-xs text-indigo-200">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </header>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Foto Kosan</h1>
+        <p className="text-sm text-gray-400">
+          Kelola foto cover dan deskripsi tiap lokasi kos
+        </p>
+      </div>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-        {/* Google Maps */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-          <div className="h-52 w-full">
-            <iframe
-              src={mapsEmbedUrl}
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="line-clamp-1 flex items-center gap-1.5 text-sm text-gray-500">
-              <MapPin className="h-4 w-4 flex-shrink-0 text-[#1e1b4b]" />
-              {k.alamat}
-            </p>
-            <a
-              href={mapsOpenUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-3 inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-[#1e1b4b] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#17144a]"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Buka Maps
-            </a>
-          </div>
-        </div>
-
-        <KamarFilterClient rooms={rooms} slug={slug} />
-      </main>
+      <KosanFormClient kosanList={kosanList} />
     </div>
   );
 }
