@@ -1,23 +1,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Home, ChevronRight } from "lucide-react";
+import { getKosanList } from "@/lib/data/kosan";
 import { createClient } from "@/lib/supabase/server";
-import type { Kosan, Kamar } from "@/types";
-
-export const revalidate = 60;
+import type { Kamar } from "@/types";
 
 export default async function HomePage() {
+  const kosanList = await getKosanList();
   const supabase = await createClient();
+  const { data: kamarData } = await supabase
+    .from("kamar")
+    .select("id, kosan_id, status");
 
-  const [{ data: kosanData }, { data: kamarData }] = await Promise.all([
-    supabase.from("kosan").select("*").order("created_at"),
-    supabase.from("kamar").select("id, kosan_id, status"),
-  ]);
-
-  const kosanList = (kosanData ?? []) as Kosan[];
   const allKamar = (kamarData ?? []) as Pick<Kamar, "id" | "kosan_id" | "status">[];
 
-  // Hitung kamar kosong per kosan
   function countKosong(kosanId: string) {
     return allKamar.filter(
       (k) => k.kosan_id === kosanId && k.status === "kosong"
@@ -68,7 +64,6 @@ export default async function HomePage() {
                       sizes="(max-width: 768px) 100vw, 768px"
                     />
                   ) : (
-                    /* Placeholder jika belum ada foto */
                     <div className="flex h-full w-full items-center justify-center">
                       <div className="flex flex-col items-center gap-2 opacity-30">
                         <Home className="h-12 w-12 text-indigo-300" />

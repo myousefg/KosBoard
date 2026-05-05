@@ -2,11 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MapPin, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { getKamarBySlug } from "@/lib/data/kosan";
 import { KamarFilterClient } from "@/components/KamarFilterClient";
-import type { Kosan, KamarWithHarga } from "@/types";
-
-export const revalidate = 60;
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://kosanboard.vercel.app";
@@ -19,30 +16,22 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("kosan")
-    .select("*")
-    .eq("slug", slug)
-    .single();
+  let result: Awaited<ReturnType<typeof getKamarBySlug>> | null = null;
+  try {
+    result = await getKamarBySlug(slug);
+  } catch {
+    return { title: "Lokasi tidak ditemukan" };
+  }
 
-  if (!data) return { title: "Lokasi tidak ditemukan" };
-
-  const kosan = data as Kosan;
-  const { data: kamarData } = await supabase
-    .from("kamar")
-    .select("id, status")
-    .eq("kosan_id", kosan.id);
-
-  const total = kamarData?.length ?? 0;
-  const kosong = kamarData?.filter((k) => k.status === "kosong").length ?? 0;
+  const { kosan, rooms } = result;
+  const total = rooms.length;
+  const kosong = rooms.filter((k) => k.status === "kosong").length;
 
   const title = kosan.nama;
   const description =
     kosan.deskripsi ??
     `${kosong} dari ${total} kamar tersedia di ${kosan.nama}, ${kosan.alamat}.`;
-
   const pageUrl = `${SITE_URL}/kos/${slug}`;
 
   return {
@@ -76,23 +65,17 @@ export default async function KosanPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  const { data: kosan } = await supabase
-    .from("kosan")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-  if (!kosan) notFound();
+  // ✅ Satu query: join kosan + kamar + harga — tidak ada N+1
+  // Cache 30 menit, invalidate via /api/revalidate setelah admin update
+  let result: Awaited<ReturnType<typeof getKamarBySlug>>;
+  try {
+    result = await getKamarBySlug(slug);
+  } catch {
+    notFound();
+  }
 
-  const { data: kamarList } = await supabase
-    .from("kamar")
-    .select("*, harga(*)")
-    .eq("kosan_id", kosan.id)
-    .order("urutan", { ascending: true });
-
-  const rooms = (kamarList ?? []) as KamarWithHarga[];
-  const k = kosan as Kosan;
+  const { kosan: k, rooms } = result;
   const kosong = rooms.filter((r) => r.status === "kosong").length;
 
   const mapsQuery = encodeURIComponent(k.alamat);
