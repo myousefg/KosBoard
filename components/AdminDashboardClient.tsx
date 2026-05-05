@@ -30,16 +30,16 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
-  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "./StatusBadge";
+import { useDndOrder } from "./admin/hooks/useDndOrder";
 import type { Kamar, Kosan } from "@/types";
 
 type Filter = "semua" | "kosong" | "terisi";
 
-// ─── Format tanggal Indonesia ─────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatTanggal(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -53,6 +53,18 @@ function formatTanggal(dateStr: string): string {
 
 function todayStr(): string {
   return new Date().toISOString().split("T")[0];
+}
+
+async function revalidateCache(tag: "kosan" | "kamar") {
+  try {
+    await fetch("/api/revalidate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag }),
+    });
+  } catch {
+    // revalidation gagal tidak critical — cache expire sendiri
+  }
 }
 
 // ─── Modal input tanggal keluar ───────────────────────────────────────────────
@@ -75,19 +87,12 @@ function TanggalModal({
     inputRef.current?.focus();
   }, []);
 
-  function handleConfirm() {
-    if (!tanggal) return;
-    onConfirm(tanggal);
-  }
-
   return (
-    /* backdrop */
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
       onClick={(e) => e.target === e.currentTarget && onCancel()}
     >
       <div className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
-        {/* Header */}
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="font-semibold text-gray-900">Kamar terisi</p>
@@ -103,7 +108,6 @@ function TanggalModal({
           </button>
         </div>
 
-        {/* Date input */}
         <div className="mb-3">
           <label className="mb-1.5 block text-xs font-medium text-gray-600">
             Tanggal keluar penghuni
@@ -129,7 +133,6 @@ function TanggalModal({
           )}
         </div>
 
-        {/* Info */}
         <div className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
           <p className="text-xs text-amber-700">
@@ -137,7 +140,6 @@ function TanggalModal({
           </p>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2">
           <button
             onClick={onSkip}
@@ -146,7 +148,7 @@ function TanggalModal({
             Tanpa tanggal
           </button>
           <button
-            onClick={handleConfirm}
+            onClick={() => tanggal && onConfirm(tanggal)}
             disabled={!tanggal}
             className="flex-1 rounded-xl bg-[#1e1b4b] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#17144a] disabled:opacity-40"
           >
@@ -163,7 +165,6 @@ function TanggalModal({
 function SortableKamarRow({
   kamar,
   kosanSlug,
-  // ✅ PERUBAHAN 1: toggling sekarang Set<string>, bukan string | null
   toggling,
   onToggleToTerisi,
   onToggleToKosong,
@@ -171,19 +172,13 @@ function SortableKamarRow({
 }: {
   kamar: Kamar;
   kosanSlug: string;
-  toggling: Set<string>; // ← dari: string | null
+  toggling: Set<string>;
   onToggleToTerisi: (k: Kamar) => void;
   onToggleToKosong: (k: Kamar) => void;
   isDragDisabled: boolean;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: kamar.id, disabled: isDragDisabled });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: kamar.id, disabled: isDragDisabled });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -191,16 +186,7 @@ function SortableKamarRow({
     opacity: isDragging ? 0.35 : 1,
   };
 
-  function handleToggle() {
-    if (kamar.status === "kosong") {
-      onToggleToTerisi(kamar);
-    } else {
-      onToggleToKosong(kamar);
-    }
-  }
-
-  // ✅ PERUBAHAN 2: cek pakai .has() bukan perbandingan string
-  const isToggling = toggling.has(kamar.id); // ← dari: toggling === kamar.id
+  const isToggling = toggling.has(kamar.id);
 
   return (
     <li
@@ -226,7 +212,6 @@ function SortableKamarRow({
           {kamar.lantai && (
             <p className="text-xs text-gray-400">Lantai {kamar.lantai}</p>
           )}
-          {/* Tanggal keluar — hanya tampil jika terisi & ada tanggal */}
           {kamar.status === "terisi" && kamar.tanggal_keluar && (
             <p className="flex items-center gap-1 text-xs text-amber-600">
               <Calendar className="h-3 w-3" />
@@ -238,9 +223,13 @@ function SortableKamarRow({
 
       <div className="flex flex-shrink-0 items-center gap-2">
         <button
-          onClick={handleToggle}
-          // ✅ PERUBAHAN 3: pakai isToggling (dari Set.has), bukan toggling === kamar.id
+          onClick={() =>
+            kamar.status === "kosong"
+              ? onToggleToTerisi(kamar)
+              : onToggleToKosong(kamar)
+          }
           disabled={isToggling}
+          aria-busy={isToggling}
           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
           title={
             isToggling
@@ -249,7 +238,6 @@ function SortableKamarRow({
           }
         >
           {isToggling ? (
-            // Spinner kecil saat loading — UX lebih jelas
             <svg
               className="h-5 w-5 animate-spin text-gray-400"
               fill="none"
@@ -318,26 +306,18 @@ export function AdminDashboardClient({
   kosanList: Kosan[];
   rooms: Kamar[];
 }) {
-  const [rooms, setRooms] = useState(
-    [...initialRooms].sort((a, b) => a.urutan - b.urutan)
-  );
+  // ✅ rooms + DnD state dikelola oleh useDndOrder (ada rollback kalau network putus)
+  const { rooms, setRooms, saving: savingOrder, reorder } = useDndOrder(initialRooms);
+
   const [openKosan, setOpenKosan] = useState<string[]>(
     kosanList.map((k) => k.id)
   );
   const [filter, setFilter] = useState<Filter>("semua");
-
-  // ✅ PERUBAHAN 4: toggling sekarang Set<string>
-  // Set bisa simpan BANYAK kamar yang sedang diproses sekaligus.
-  // Dulu: string | null → hanya bisa lindungi 1 kamar.
-  // Sekarang: Set<string> → bisa lindungi semua kamar yang pending secara bersamaan.
   const [toggling, setToggling] = useState<Set<string>>(new Set());
-
   const [search, setSearch] = useState("");
-  const [savingOrder, setSavingOrder] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-
-  // Modal state — null = tidak tampil, Kamar = sedang menunggu input tanggal
   const [pendingTerisi, setPendingTerisi] = useState<Kamar | null>(null);
+  const [dndError, setDndError] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -354,7 +334,6 @@ export function AdminDashboardClient({
     );
   }
 
-  // ✅ Helper: tambah/hapus ID dari Set toggling
   function addToggling(id: string) {
     setToggling((prev) => new Set([...prev, id]));
   }
@@ -366,20 +345,16 @@ export function AdminDashboardClient({
     });
   }
 
-  // Toggle ke TERISI → buka modal dulu
   function handleToggleToTerisi(kamar: Kamar) {
-    // Guard: jangan buka modal kalau kamar ini sedang diproses
     if (toggling.has(kamar.id)) return;
     setPendingTerisi(kamar);
   }
 
-  // Modal: user pilih tanggal atau skip → eksekusi update
   async function confirmTerisi(tanggalKeluar: string | null) {
     if (!pendingTerisi) return;
     const kamar = pendingTerisi;
     setPendingTerisi(null);
 
-    // Guard: jangan proses kalau sudah pending (double-submit)
     if (toggling.has(kamar.id)) return;
     addToggling(kamar.id);
 
@@ -397,16 +372,15 @@ export function AdminDashboardClient({
               : r
           )
         );
+        // Invalidate cache publik supaya halaman kos/[slug] ikut terupdate
+        await revalidateCache("kamar");
       }
     } finally {
-      // Selalu hapus dari pending, baik sukses maupun gagal
       removeToggling(kamar.id);
     }
   }
 
-  // Toggle ke KOSONG → langsung, hapus tanggal_keluar
   async function handleToggleToKosong(kamar: Kamar) {
-    // Guard: jangan proses kalau sudah pending
     if (toggling.has(kamar.id)) return;
     addToggling(kamar.id);
 
@@ -424,6 +398,7 @@ export function AdminDashboardClient({
               : r
           )
         );
+        await revalidateCache("kamar");
       }
     } finally {
       removeToggling(kamar.id);
@@ -434,6 +409,7 @@ export function AdminDashboardClient({
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string);
+    setDndError(null);
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -441,36 +417,14 @@ export function AdminDashboardClient({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const draggedRoom = rooms.find((r) => r.id === active.id);
-    if (!draggedRoom) return;
-    const kosanId = draggedRoom.kosan_id;
-
-    const kamarDalamKosan = rooms.filter((r) => r.kosan_id === kosanId);
-    const oldIdx = kamarDalamKosan.findIndex((r) => r.id === active.id);
-    const newIdx = kamarDalamKosan.findIndex((r) => r.id === over.id);
-    if (oldIdx === -1 || newIdx === -1) return;
-
-    const reordered = arrayMove(kamarDalamKosan, oldIdx, newIdx).map(
-      (r, i) => ({ ...r, urutan: i + 1 })
-    );
-
-    setRooms((prev) => {
-      const others = prev.filter((r) => r.kosan_id !== kosanId);
-      return [...others, ...reordered].sort((a, b) => {
-        const kosanOrder = kosanList.map((k) => k.id);
-        const diff =
-          kosanOrder.indexOf(a.kosan_id) - kosanOrder.indexOf(b.kosan_id);
-        return diff !== 0 ? diff : a.urutan - b.urutan;
-      });
-    });
-
-    setSavingOrder(kosanId);
-    await Promise.all(
-      reordered.map((r) =>
-        supabase.from("kamar").update({ urutan: r.urutan }).eq("id", r.id)
-      )
-    );
-    setSavingOrder(null);
+    try {
+      // ✅ useDndOrder: optimistic update + rollback otomatis kalau gagal
+      await reorder(active.id as string, over.id as string, kosanList);
+    } catch {
+      setDndError("Gagal menyimpan urutan. Urutan dikembalikan ke sebelumnya.");
+      // Auto-hide error setelah 4 detik
+      setTimeout(() => setDndError(null), 4000);
+    }
   }
 
   // ── Filtered rooms ─────────────────────────────────────────────────────────
@@ -499,7 +453,6 @@ export function AdminDashboardClient({
 
   return (
     <>
-      {/* Modal tanggal keluar */}
       {pendingTerisi && (
         <TanggalModal
           kamarNama={pendingTerisi.nama}
@@ -507,6 +460,14 @@ export function AdminDashboardClient({
           onSkip={() => confirmTerisi(null)}
           onCancel={() => setPendingTerisi(null)}
         />
+      )}
+
+      {/* DnD error toast */}
+      {dndError && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          {dndError}
+        </div>
       )}
 
       <DndContext
@@ -600,6 +561,7 @@ export function AdminDashboardClient({
               (r) => r.status === "kosong"
             ).length;
             const open = isOpen(kosan.id);
+            // ✅ savingOrder sekarang dari useDndOrder
             const isSaving = savingOrder === kosan.id;
 
             if (isSearching && kamarKosan.length === 0) return null;
