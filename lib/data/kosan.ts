@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createFetchClient } from "@/lib/supabase/fetch-client";
 import type { Kosan, KamarWithHarga } from "@/types";
 
 /**
@@ -8,7 +8,8 @@ import type { Kosan, KamarWithHarga } from "@/types";
  */
 export const getKosanList = unstable_cache(
   async (): Promise<Kosan[]> => {
-    const supabase = await createClient();
+    // ✅ createFetchClient — tidak pakai cookies(), aman di dalam cache
+    const supabase = createFetchClient();
     const { data, error } = await supabase
       .from("kosan")
       .select("*")
@@ -31,7 +32,7 @@ export const getKosanList = unstable_cache(
  */
 export const getKamarBySlug = unstable_cache(
   async (slug: string): Promise<{ kosan: Kosan; rooms: KamarWithHarga[] }> => {
-    const supabase = await createClient();
+    const supabase = createFetchClient();
 
     const { data: kosanData, error: kosanError } = await supabase
       .from("kosan")
@@ -65,13 +66,10 @@ export const getKamarBySlug = unstable_cache(
 );
 
 /**
- * Fetch semua kamar (tanpa harga) untuk admin dashboard — tidak di-cache
- * Admin butuh data fresh setiap kali buka dashboard
+ * Fetch semua kamar untuk admin dashboard — tidak di-cache, butuh data fresh
  */
-export async function getKamarAdmin(): Promise<
-  import("@/types").Kamar[]
-> {
-  const supabase = await createClient();
+export async function getKamarAdmin(): Promise<import("@/types").Kamar[]> {
+  const supabase = createFetchClient();
   const { data, error } = await supabase
     .from("kamar")
     .select("*")
