@@ -8,6 +8,25 @@ import { KamarFilterClient } from "@/components/KamarFilterClient";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://kosanboard.vercel.app";
 
+// ─── Helpers Maps ─────────────────────────────────────────────────────────────
+
+function getMapsUrls(alamat: string, lat: number | null, lng: number | null) {
+  if (lat && lng) {
+    // Pakai koordinat presisi kalau tersedia
+    const coord = `${lat},${lng}`;
+    return {
+      embedUrl: `https://maps.google.com/maps?q=${coord}&output=embed&z=18`,
+      openUrl: `https://www.google.com/maps/search/?api=1&query=${coord}`,
+    };
+  }
+  // Fallback ke alamat teks
+  const q = encodeURIComponent(alamat);
+  return {
+    embedUrl: `https://maps.google.com/maps?q=${q}&output=embed&z=17`,
+    openUrl: `https://www.google.com/maps/search/?api=1&query=${q}`,
+  };
+}
+
 // ─── generateMetadata ─────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -41,7 +60,7 @@ export async function generateMetadata({
       title,
       description,
       url: pageUrl,
-      siteName: "KosanBoard — Kos Bu Ida",
+      siteName: "KosanBoard",
       type: "website",
       locale: "id_ID",
       ...(kosan.foto_cover
@@ -66,8 +85,6 @@ export default async function KosanPage({
 }) {
   const { slug } = await params;
 
-  // ✅ Satu query: join kosan + kamar + harga — tidak ada N+1
-  // Cache 30 menit, invalidate via /api/revalidate setelah admin update
   let result: Awaited<ReturnType<typeof getKamarBySlug>>;
   try {
     result = await getKamarBySlug(slug);
@@ -78,9 +95,7 @@ export default async function KosanPage({
   const { kosan: k, rooms } = result;
   const kosong = rooms.filter((r) => r.status === "kosong").length;
 
-  const mapsQuery = encodeURIComponent(k.alamat);
-  const mapsEmbedUrl = `https://maps.google.com/maps?q=${mapsQuery}&output=embed&z=17`;
-  const mapsOpenUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+  const { embedUrl, openUrl } = getMapsUrls(k.alamat, k.latitude, k.longitude);
 
   return (
     <div className="min-h-screen bg-[#F8F7F4]">
@@ -113,11 +128,11 @@ export default async function KosanPage({
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-        {/* Google Maps */}
+        {/* Google Maps — embed presisi pakai koordinat */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
           <div className="h-52 w-full">
             <iframe
-              src={mapsEmbedUrl}
+              src={embedUrl}
               width="100%"
               height="100%"
               style={{ border: 0 }}
@@ -132,7 +147,7 @@ export default async function KosanPage({
               {k.alamat}
             </p>
             <a
-              href={mapsOpenUrl}
+              href={openUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="ml-3 inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-[#1e1b4b] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#17144a]"

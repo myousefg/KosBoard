@@ -9,6 +9,8 @@ export interface Kosan {
   foto_cover: string | null;
   deskripsi: string | null;
   created_at: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface Harga {
