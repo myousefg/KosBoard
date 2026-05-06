@@ -81,7 +81,7 @@ export async function generateMetadata({
       title,
       description,
       url: pageUrl,
-      siteName: "KosBoard — Kos Bu Ida",
+      siteName: "KosanBoard — Kos Bu Ida",
       type: "website",
       locale: "id_ID",
     },

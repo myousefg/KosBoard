@@ -32,7 +32,7 @@ export default async function HomePage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
               <Home className="h-5 w-5" />
             </div>
-            <span className="text-xl font-bold">Kos Bu Ida</span>
+            <span className="text-xl font-bold">KosanBoard</span>
           </div>
           <p className="text-sm text-indigo-200">
             Pilih lokasi kos yang ingin kamu lihat

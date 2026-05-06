@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const KOS_NAME = process.env.NEXT_PUBLIC_KOS_NAME ?? "KosBoard";
+const KOS_NAME = process.env.NEXT_PUBLIC_KOS_NAME ?? "KosanBoard";
 const KOS_ADDRESS = process.env.NEXT_PUBLIC_KOS_ADDRESS ?? "Bandung";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://kosanboard.vercel.app";
@@ -12,12 +12,12 @@ export const metadata: Metadata = {
     template: `%s — ${KOS_NAME}`,
   },
   description: `Informasi kamar dan ketersediaan ${KOS_NAME} di ${KOS_ADDRESS}`,
-  applicationName: "KosBoard",
+  applicationName: "KosanBoard",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "KosBoard",
+    title: "KosanBoard",
   },
   metadataBase: new URL(SITE_URL),
   openGraph: {

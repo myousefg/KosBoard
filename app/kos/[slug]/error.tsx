@@ -10,7 +10,7 @@ export default function KosanError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[KosBoard] Kosan page error:', error)
+    console.error('[KosanBoard] Kosan page error:', error)
   }, [error])
 
   return (

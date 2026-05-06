@@ -59,7 +59,7 @@ export function ExportCSVButton({
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `KosBoard-${tanggal}.csv`;
+    a.download = `KosanBoard-${tanggal}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

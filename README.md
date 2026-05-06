@@ -1,10 +1,10 @@
-# 🏠 KosBoard — Informasi Kamar Kos Digital
+# 🏠 KosanBoard — Informasi Kamar Kos Digital
 
 Aplikasi web untuk membantu pemilik kos menampilkan informasi kamar secara digital. Dibangun sebagai proyek **TPLM (Teknologi Perangkat Lunak untuk Masyarakat)** Universitas Telkom.
 
 **Stack:** Next.js 15 (App Router) · Supabase · Tailwind CSS · TypeScript  
 **Demo:** [kosanboard.vercel.app](https://kosanboard.vercel.app)  
-**GitHub:** [github.com/myousefg/KosBoard](https://github.com/myousefg/KosBoard)
+**GitHub:** [github.com/myousefg/KosanBoard](https://github.com/myousefg/KosanBoard)
 
 ---
 
@@ -38,14 +38,14 @@ Aplikasi web untuk membantu pemilik kos menampilkan informasi kamar secara digit
 
 ## 🚀 Setup & Deploy
 
-> **KosBoard di-deploy ke Vercel** — tidak perlu run lokal untuk production.  
+> **KosanBoard di-deploy ke Vercel** — tidak perlu run lokal untuk production.  
 > Setiap `git push` ke GitHub otomatis trigger deploy di Vercel.
 
 ### 1. Clone repo
 
 ```bash
-git clone https://github.com/myousefg/KosBoard.git
-cd KosBoard
+git clone https://github.com/myousefg/KosanBoard.git
+cd KosanBoard
 ```
 
 ### 2. Setup Supabase
@@ -107,7 +107,7 @@ bash scripts/clean.sh
 ## 📁 Struktur Folder
 
 ```
-KosBoard/
+KosanBoard/
 ├── app/
 │   ├── page.tsx                        # Halaman utama (pilih lokasi + foto cover)
 │   ├── manifest.json                   # PWA manifest

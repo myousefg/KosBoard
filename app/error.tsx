@@ -10,7 +10,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[KosBoard] Global error:', error)
+    console.error('[KosanBoard] Global error:', error)
   }, [error])
 
   return (
